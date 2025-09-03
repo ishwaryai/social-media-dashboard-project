@@ -1,0 +1,129 @@
+frontend/index.html
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Social Media Dashboard</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  <!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+</html>
+
+frontend/src/main.jsx
+
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(<App />)
+
+frontend/src/App.jsx
+
+import React, { useEffect, useState } from 'react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+
+export default function App() {
+  const [data, setData] = useState(null);
+  const [content, setContent] = useState('Hello world!');
+  const [platform, setPlatform] = useState('twitter');
+
+  useEffect(() => {
+    fetch(${API}/api/metrics/summary).then(r=>r.json()).then(setData).catch(console.error);
+  }, []);
+
+  const schedule = async () => {
+    await fetch(${API}/api/schedule, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ platform, content })
+    });
+    alert('Scheduled locally (mock).');
+  };
+
+  const chartData = [
+    { name: 'Mon', twitter: 1200, instagram: 900 },
+    { name: 'Tue', twitter: 1600, instagram: 1100 },
+    { name: 'Wed', twitter: 1400, instagram: 1500 },
+    { name: 'Thu', twitter: 1800, instagram: 1700 },
+    { name: 'Fri', twitter: 2000, instagram: 1900 },
+  ];
+
+  return (
+    <div style={{ maxWidth: 1000, margin:'2rem auto', fontFamily:'system-ui' }}>
+      <h1>Social Media Dashboard</h1>
+      <div style={{ display:'flex', gap:8, marginBottom: 16 }}>
+        <select value={platform} onChange={e=>setPlatform(e.target.value)}>
+          <option value="twitter">Twitter</option>
+          <option value="instagram">Instagram</option>
+        </select>
+        <input value={content} onChange={e=>setContent(e.target.value)} style={{ flex:1 }} />
+        <button onClick={schedule}>Schedule Post</button>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+        <div style={{ padding:16, border:'1px solid #ddd', borderRadius:8 }}>
+          <h3>Totals</h3>
+          <pre>{JSON.stringify(data, null, 2)}</pre>
+        </div>
+        <div style={{ padding:16, border:'1px solid #ddd', borderRadius:8 }}>
+          <h3>Impressions (sample)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="twitter" />
+              <Line type="monotone" dataKey="instagram" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  )
+}
